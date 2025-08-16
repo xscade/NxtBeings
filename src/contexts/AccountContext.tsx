@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
+import { apiService } from '@/lib/api';
 
-export type AccountType = 'applicant' | 'recruiter';
+export type AccountType = 'applicant' | 'recruiter' | 'admin';
 
 interface User {
   id: string;
@@ -110,6 +111,9 @@ interface AccountContextType {
   setIsLoading: (loading: boolean) => void;
   token: string | null;
   setToken: (token: string | null) => void;
+  logout: () => void;
+  login: (userData: any, authToken: string) => Promise<void>;
+  isAuthenticated: boolean;
 }
 
 const AccountContext = createContext<AccountContextType | undefined>(undefined);
@@ -120,53 +124,189 @@ interface AccountProviderProps {
 
 export const AccountProvider: React.FC<AccountProviderProps> = ({ children }) => {
   const [accountType, setAccountType] = useState<AccountType>('applicant');
-  const [user, setUser] = useState<User | null>({
-    id: '1',
-    firstName: 'Sarah',
-    lastName: 'Chen',
-    email: 'sarah@nxtbeings.com',
-    avatar: 'SC',
-    currentRole: 'AI-First Developer',
-    userType: 'applicant'
-  });
+  const [user, setUser] = useState<User | null>(null);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [isLoading, setIsLoading] = useState(true);
+  const [token, setToken] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // Load user data from localStorage on mount
-  useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    const savedToken = localStorage.getItem('token');
-    
-    if (savedUser && savedToken) {
-      try {
-        setUser(JSON.parse(savedUser));
-        setToken(savedToken);
-      } catch (error) {
-        console.error('Error parsing saved user data:', error);
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
+  // Function to clear all data
+  const clearAllData = useCallback(() => {
+    console.log('=== CLEARING ALL DATA ===');
+    setUser(null);
+    setToken(null);
+    setDashboardData(null);
+    setAccountType('applicant');
+    setIsAuthenticated(false);
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('dashboardData');
+    apiService.setToken(null);
+    console.log('=== DATA CLEARED ===');
+  }, []);
+
+  // Logout function
+  const logout = useCallback(() => {
+    console.log('Logging out');
+    clearAllData();
+    window.location.href = '/';
+  }, [clearAllData]);
+
+  // Login function - completely rewritten for stability
+  const login = useCallback(async (userData: any, authToken: string) => {
+    try {
+      console.log('=== LOGIN START ===');
+      console.log('Logging in user:', userData.email);
+      
+      // Set authentication state immediately
+      setIsAuthenticated(true);
+      setUser(userData);
+      setToken(authToken);
+      setAccountType(userData.userType);
+      
+      // Save to localStorage
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('token', authToken);
+      
+      // Update API service token
+      apiService.setToken(authToken);
+      
+      console.log('=== LOGIN COMPLETE ===');
+      
+      // Fetch dashboard data in background (don't await)
+      fetchDashboardData(userData.userType, userData.id).catch(console.error);
+      
+    } catch (error) {
+      console.error('Error during login:', error);
+      clearAllData();
+      throw error;
+    }
+  }, [clearAllData]);
+
+  // Function to fetch dashboard data
+  const fetchDashboardData = useCallback(async (userType: string, userId: string) => {
+    try {
+      console.log('Fetching dashboard data for:', { userType, userId });
+      
+      let data;
+      if (userType === 'applicant') {
+        data = await apiService.getApplicantDashboard(userId);
+      } else if (userType === 'recruiter') {
+        data = await apiService.getRecruiterDashboard(userId);
       }
+      
+      if (data) {
+        setDashboardData(data as any);
+        localStorage.setItem('dashboardData', JSON.stringify(data));
+        console.log('Dashboard data updated successfully');
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
     }
   }, []);
 
-  // Save user data to localStorage when it changes
+  // Initialize app on mount - only run once
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('user');
-    }
-  }, [user]);
+    const initializeApp = async () => {
+      try {
+        console.log('=== APP INITIALIZATION START ===');
+        const savedUser = localStorage.getItem('user');
+        const savedToken = localStorage.getItem('token');
+        const savedDashboardData = localStorage.getItem('dashboardData');
+        
+        if (savedUser && savedToken) {
+          try {
+            const parsedUser = JSON.parse(savedUser);
+            console.log('Found saved session for:', parsedUser.email);
+            
+            // Set initial state from localStorage immediately
+            setUser(parsedUser);
+            setToken(savedToken);
+            setAccountType(parsedUser.userType);
+            setIsAuthenticated(true);
+            apiService.setToken(savedToken);
+            
+            if (savedDashboardData) {
+              try {
+                setDashboardData(JSON.parse(savedDashboardData));
+              } catch (error) {
+                console.error('Error parsing saved dashboard data:', error);
+                localStorage.removeItem('dashboardData');
+              }
+            }
+            
+            // Validate token in background
+            try {
+              const response = await fetch(`${(import.meta as any).env.VITE_API_URL || 'http://localhost:3001'}/api/auth/validate`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${savedToken}`,
+                  'Content-Type': 'application/json'
+                }
+              });
 
-  // Save token to localStorage when it changes
+              if (response.ok) {
+                const userData = await response.json();
+                console.log('Token validated successfully');
+                
+                // Update with fresh data
+                setUser(userData.user);
+                setAccountType(userData.user.userType);
+                localStorage.setItem('user', JSON.stringify(userData.user));
+                
+                // Fetch fresh dashboard data
+                fetchDashboardData(userData.user.userType, userData.user.id).catch(console.error);
+              } else {
+                console.log('Token validation failed, clearing session');
+                clearAllData();
+              }
+            } catch (error) {
+              console.error('Error validating token:', error);
+              // Keep the session on network errors
+            }
+            
+          } catch (error) {
+            console.error('Error parsing saved user data:', error);
+            clearAllData();
+          }
+        } else {
+          console.log('No saved session found');
+        }
+      } catch (error) {
+        console.error('Error during app initialization:', error);
+        clearAllData();
+      } finally {
+        setIsLoading(false);
+        setIsInitialized(true);
+        console.log('=== APP INITIALIZATION COMPLETE ===');
+      }
+    };
+
+    initializeApp();
+  }, []); // Empty dependency array - only run once
+
+  // Save user data to localStorage when it changes (only after initialization)
   useEffect(() => {
-    if (token) {
-      localStorage.setItem('token', token);
-    } else {
-      localStorage.removeItem('token');
+    if (isInitialized && user) {
+      localStorage.setItem('user', JSON.stringify(user));
     }
-  }, [token]);
+  }, [user, isInitialized]);
+
+  // Save token to localStorage when it changes (only after initialization)
+  useEffect(() => {
+    if (isInitialized && token) {
+      localStorage.setItem('token', token);
+      apiService.setToken(token);
+    }
+  }, [token, isInitialized]);
+
+  // Save dashboard data to localStorage when it changes (only after initialization)
+  useEffect(() => {
+    if (isInitialized && dashboardData) {
+      localStorage.setItem('dashboardData', JSON.stringify(dashboardData));
+    }
+  }, [dashboardData, isInitialized]);
 
   const value = {
     accountType,
@@ -178,7 +318,10 @@ export const AccountProvider: React.FC<AccountProviderProps> = ({ children }) =>
     isLoading,
     setIsLoading,
     token,
-    setToken
+    setToken,
+    logout,
+    login,
+    isAuthenticated
   };
 
   return (

@@ -4,6 +4,7 @@ import {
   Home, 
   Briefcase, 
   User,
+  Users,
   Settings, 
   Menu, 
   X, 
@@ -13,7 +14,8 @@ import {
   ChevronRight,
   BookOpen,
   Target,
-  Zap
+  Zap,
+  LogOut
 } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { GlassCard } from "@/components/ui/GlassCard";
@@ -24,19 +26,35 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-const navigationItems = [
-  { icon: Home, label: "Dashboard", href: "/dashboard" },
-  { icon: Briefcase, label: "Job Opportunities", href: "/jobs" },
-  { icon: User, label: "My Profile", href: "/profile" },
-  { icon: BookOpen, label: "AI Skills", href: "/skills" },
-  { icon: Target, label: "Applications", href: "/applications" },
-  { icon: Settings, label: "Settings", href: "/settings" },
-];
+const getNavigationItems = (userType: string) => {
+  if (userType === 'recruiter') {
+    return [
+      { icon: Home, label: "Dashboard", href: "/recruiter/dashboard" },
+      { icon: Briefcase, label: "Job Postings", href: "/recruiter/jobs" },
+      { icon: Search, label: "Search Talent", href: "/recruiter/search" },
+      { icon: Target, label: "Applications", href: "/recruiter/applications" },
+      { icon: Users, label: "Candidates", href: "/recruiter/candidates" },
+      { icon: Settings, label: "Settings", href: "/recruiter/settings" },
+    ];
+  }
+  
+  // Default for applicants/NxtBeings
+  return [
+    { icon: Home, label: "Dashboard", href: "/nxtbeing/dashboard" },
+    { icon: Briefcase, label: "Job Opportunities", href: "/nxtbeing/jobs" },
+    { icon: User, label: "My Profile", href: "/nxtbeing/profile" },
+    { icon: BookOpen, label: "AI Skills", href: "/nxtbeing/skills" },
+    { icon: Target, label: "Applications", href: "/nxtbeing/applications" },
+    { icon: Settings, label: "Settings", href: "/nxtbeing/settings" },
+  ];
+};
 
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { accountType, user } = useAccount();
+  const { accountType, user, logout } = useAccount();
+  
+  const navigationItems = getNavigationItems(user?.userType || 'applicant');
 
   return (
     <div className="min-h-screen bg-base-bg">
@@ -130,7 +148,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
 
           {/* User Profile */}
           <div className="p-4 border-t border-white/10">
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-3 mb-3">
               <div className="h-8 w-8 rounded-full bg-primary-500 flex items-center justify-center">
                 <span className="text-white font-semibold text-sm">{user?.avatar}</span>
               </div>
@@ -150,6 +168,25 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 </motion.div>
               )}
             </div>
+            
+            {/* Logout Button */}
+            <button
+              onClick={logout}
+              className={`w-full flex items-center space-x-3 p-2 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white ${
+                sidebarCollapsed ? 'justify-center' : 'justify-start'
+              }`}
+            >
+              <LogOut className="h-4 w-4 flex-shrink-0" />
+              {!sidebarCollapsed && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-sm font-medium"
+                >
+                  Logout
+                </motion.span>
+              )}
+            </button>
           </div>
         </div>
       </motion.aside>

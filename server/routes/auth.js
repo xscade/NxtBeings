@@ -99,6 +99,75 @@ router.post('/kyc/verify-otp', [
   }
 });
 
+// Validate token and get fresh user data
+router.get('/validate', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+
+    // Verify JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (!decoded.userId) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Find user in database
+    let user = await Applicant.findById(decoded.userId);
+    let userType = 'applicant';
+
+    if (!user) {
+      user = await Recruiter.findById(decoded.userId);
+      userType = 'recruiter';
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      return res.status(401).json({ error: 'User account is deactivated' });
+    }
+
+    // Return fresh user data
+    res.json({
+      message: 'Token validated successfully',
+      user: {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        currentRole: user.currentRole,
+        userType,
+        avatar: `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`,
+        phoneVerified: user.phoneVerified,
+        isKYCVerified: user.isKYCVerified,
+        ...(userType === 'recruiter' && { company: user.company })
+      }
+    });
+
+  } catch (error) {
+    console.error('Error validating token:', error);
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expired' });
+    }
+    
+    res.status(500).json({ error: 'Token validation failed' });
+  }
+});
+
 // Register applicant
 router.post('/register/applicant', [
   body('firstName').trim().isLength({ min: 2 }).withMessage('First name must be at least 2 characters'),
@@ -125,6 +194,12 @@ router.post('/register/applicant', [
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    // Filter out invalid work types and location preferences
+    const validWorkTypes = ['full-time', 'part-time', 'contract', 'freelance', 'internship'];
+    const filteredWorkTypes = preferredWorkType ? 
+      preferredWorkType.filter(type => validWorkTypes.includes(type)) : 
+      [];
+
     // Create new applicant
     const applicant = new Applicant({
       firstName,
@@ -133,7 +208,7 @@ router.post('/register/applicant', [
       password: hashedPassword,
       currentRole,
       yearsOfExperience,
-      preferredWorkType
+      preferredWorkType: filteredWorkTypes
     });
 
     await applicant.save();
@@ -155,6 +230,7 @@ router.post('/register/applicant', [
         email: applicant.email,
         currentRole: applicant.currentRole,
         userType: 'applicant',
+        avatar: `${applicant.firstName.charAt(0)}${applicant.lastName.charAt(0)}`,
         phoneVerified: applicant.phoneVerified,
         isKYCVerified: applicant.isKYCVerified
       }
@@ -226,6 +302,7 @@ router.post('/register/recruiter', [
         currentRole: recruiter.currentRole,
         company: recruiter.company,
         userType: 'recruiter',
+        avatar: `${recruiter.firstName.charAt(0)}${recruiter.lastName.charAt(0)}`,
         phoneVerified: recruiter.phoneVerified,
         isKYCVerified: recruiter.isKYCVerified
       }
@@ -291,6 +368,7 @@ router.post('/login', [
         phone: user.phone,
         currentRole: user.currentRole,
         userType,
+        avatar: `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`,
         phoneVerified: user.phoneVerified,
         isKYCVerified: user.isKYCVerified,
         ...(userType === 'recruiter' && { company: user.company })

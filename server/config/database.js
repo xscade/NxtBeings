@@ -5,7 +5,9 @@ dotenv.config();
 
 const connectDB = async () => {
   try {
+    const dbName = process.env.MONGODB_DB_NAME || 'nxtbeings';
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      dbName: dbName,
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });

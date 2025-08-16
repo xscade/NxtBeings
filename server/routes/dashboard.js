@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Applicant from '../models/Applicant.js';
 import Recruiter from '../models/Recruiter.js';
 
@@ -8,6 +9,11 @@ const router = express.Router();
 router.get('/applicant/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID format' });
+    }
     
     const applicant = await Applicant.findById(userId)
       .select('-password')
@@ -79,13 +85,13 @@ router.get('/applicant/:userId', async (req, res) => {
     
     const dashboardData = {
       profile: {
-        name: applicant.fullName,
+        name: `${applicant.firstName} ${applicant.lastName}`,
         email: applicant.email,
-        avatar: applicant.avatar,
+        avatar: applicant.avatar || `${applicant.firstName.charAt(0)}${applicant.lastName.charAt(0)}`,
         headline: applicant.headline,
         currentRole: applicant.currentRole,
         location: applicant.location,
-        profileCompletion: applicant.profileCompletion
+        profileCompletion: applicant.profileCompletion || 75
       },
       stats: {
         ...applicant.stats,
@@ -113,7 +119,11 @@ router.get('/applicant/:userId', async (req, res) => {
     
   } catch (error) {
     console.error('Error fetching applicant dashboard:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -121,6 +131,11 @@ router.get('/applicant/:userId', async (req, res) => {
 router.get('/recruiter/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    
+    // Validate ObjectId format
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID format' });
+    }
     
     const recruiter = await Recruiter.findById(userId)
       .select('-password')

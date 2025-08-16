@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, ArrowRight, Phone, User, Building, CheckCircle, Clock, Mail } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { PrimaryButton } from './PrimaryButton';
 import { Input } from './Input';
 import { apiService } from '@/lib/api';
+import { useAccount } from '@/contexts/AccountContext';
 
 interface LoginModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (userData: any) => void;
+  defaultUserType?: 'applicant' | 'recruiter';
 }
 
 type Step = 'userType' | 'credentials' | 'complete';
@@ -23,25 +25,37 @@ interface LoginData {
 export const LoginModal: React.FC<LoginModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  defaultUserType = 'applicant'
 }) => {
+  const { login } = useAccount();
   const [currentStep, setCurrentStep] = useState<Step>('userType');
   const [data, setLoginData] = useState<LoginData>({
-    userType: 'applicant',
+    userType: defaultUserType,
     email: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [loginAttempted, setLoginAttempted] = useState(false);
+
+  // Update user type when defaultUserType prop changes
+  useEffect(() => {
+    if (isOpen && defaultUserType !== data.userType) {
+      setLoginData(prev => ({ ...prev, userType: defaultUserType }));
+      setCurrentStep('userType');
+    }
+  }, [isOpen, defaultUserType, data.userType]);
 
   const resetForm = () => {
     setCurrentStep('userType');
     setLoginData({
-      userType: 'applicant',
+      userType: defaultUserType,
       email: '',
       password: ''
     });
     setError('');
+    setLoginAttempted(false);
   };
 
   const handleClose = () => {
@@ -55,27 +69,57 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       return;
     }
 
+    // Prevent multiple login attempts
+    if (loading || loginAttempted) {
+      return;
+    }
+
     setLoading(true);
+    setLoginAttempted(true);
     setError('');
     
     try {
+      console.log('Starting login process...');
       const response = await apiService.login({
         email: data.email,
         password: data.password,
         userType: data.userType
-      });
+      }) as any;
       
+      console.log('Login API call successful, calling AccountContext login...');
+      // Use the new login function from AccountContext
+      await login(response.user, response.token);
+      
+      console.log('AccountContext login successful, calling onSuccess...');
+      // Call onSuccess for navigation
       onSuccess(response);
-      setCurrentStep('complete');
+      
+      // Small delay to ensure state is properly set before navigation
+      setTimeout(() => {
+        setCurrentStep('complete');
+      }, 100);
     } catch (error: any) {
+      console.error('Login error:', error);
       setError(error.message || 'Login failed. Please try again.');
+      setLoginAttempted(false);
     } finally {
       setLoading(false);
     }
   };
 
   const handleNext = async () => {
-    if (currentStep === 'credentials') {
+    console.log('handleNext called, currentStep:', currentStep, 'loading:', loading, 'loginAttempted:', loginAttempted);
+    
+    // Prevent multiple calls while loading or if login was already attempted
+    if (loading || loginAttempted) {
+      return;
+    }
+    
+    if (currentStep === 'userType') {
+      console.log('Moving from userType to credentials');
+      setCurrentStep('credentials');
+    } else if (currentStep === 'credentials') {
+      console.log('Attempting login');
       await handleLogin();
     }
   };
@@ -96,7 +140,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <span className="text-white font-bold text-lg">N</span>
               </div>
               <div className="bg-white/10 rounded-2xl px-4 py-3 max-w-xs">
-                <p className="text-white text-sm">
+                <p className="text-white/60 text-sm">
                   Welcome back! How would you like to sign in?
                 </p>
               </div>
@@ -114,7 +158,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                 <div className="flex items-center space-x-3">
                   <User className="h-6 w-6 text-primary-400" />
                   <div className="text-left">
-                    <h3 className="font-semibold text-white">Professional</h3>
+                    <h3 className="font-semibold text-white">NxtBeing</h3>
                     <p className="text-white/60 text-sm">Sign in to your account</p>
                   </div>
                 </div>
@@ -198,7 +242,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                   Login Successful!
                 </h3>
                 <p className="text-white/60 text-sm mt-1">
-                  You'll be redirected shortly
+                  You&apos;ll be redirected shortly
                 </p>
               </div>
             </div>
@@ -242,7 +286,7 @@ export const LoginModal: React.FC<LoginModalProps> = ({
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-white">
-                  {data.userType === 'recruiter' ? 'Recruiter Login' : 'Professional Login'}
+                  {data.userType === 'recruiter' ? 'Recruiter Login' : 'NxtBeing Login'}
                 </h2>
                 <button
                   onClick={handleClose}

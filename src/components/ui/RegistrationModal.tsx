@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, ArrowRight, Mail, User, Building, CheckCircle } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { PrimaryButton } from './PrimaryButton';
 import { Input } from './Input';
 import { apiService } from '@/lib/api';
+import { useAccount } from '@/contexts/AccountContext';
 
 interface RegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (userData: any) => void;
+  defaultUserType?: UserType;
 }
 
 type UserType = 'applicant' | 'recruiter';
@@ -35,11 +37,13 @@ interface RegistrationData {
 export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  defaultUserType = 'applicant'
 }) => {
+  const { login } = useAccount();
   const [currentStep, setCurrentStep] = useState<Step>('userType');
   const [data, setData] = useState<RegistrationData>({
-    userType: 'applicant',
+    userType: defaultUserType,
     email: '',
     password: '',
     firstName: '',
@@ -57,10 +61,18 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   const currentStepIndex = steps[data.userType].indexOf(currentStep);
   const totalSteps = steps[data.userType].length;
 
+  // Update user type when defaultUserType prop changes
+  useEffect(() => {
+    if (isOpen && defaultUserType !== data.userType) {
+      setData(prev => ({ ...prev, userType: defaultUserType }));
+      setCurrentStep('userType');
+    }
+  }, [isOpen, defaultUserType, data.userType]);
+
   const resetForm = () => {
     setCurrentStep('userType');
     setData({
-      userType: 'applicant',
+      userType: defaultUserType,
       email: '',
       password: '',
       firstName: '',
@@ -78,13 +90,14 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
 
   const handleNext = async () => {
-    if (currentStep === 'complete') {
+    // If we're on the last step before complete, trigger registration
+    if (currentStepIndex === totalSteps - 2) {
       await handleRegistration();
     } else {
-          const nextStepIndex = currentStepIndex + 1;
-    if (nextStepIndex < totalSteps) {
-      setCurrentStep(steps[data.userType][nextStepIndex] as Step);
-    }
+      const nextStepIndex = currentStepIndex + 1;
+      if (nextStepIndex < totalSteps) {
+        setCurrentStep(steps[data.userType][nextStepIndex] as Step);
+      }
     }
   };
 
@@ -120,13 +133,16 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
         })
       };
 
-      let response;
+      let response: any;
       if (data.userType === 'applicant') {
         response = await apiService.registerApplicant(registrationData as any);
       } else {
         response = await apiService.registerRecruiter(registrationData as any);
       }
 
+      // Use the new login function from AccountContext
+      await login(response.user, response.token);
+      
       onSuccess(response);
       handleClose();
     } catch (error: any) {
@@ -137,17 +153,23 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   };
 
   const canProceed = () => {
+    console.log('canProceed check:', { currentStep, data });
     switch (currentStep) {
       case 'userType':
         return true;
       case 'basicInfo':
         return data.firstName && data.lastName && data.email && data.password && data.currentRole;
-      case 'professionalInfo':
-        return data.yearsOfExperience && data.preferredWorkType?.length;
+      case 'professionalInfo': {
+        const canProceedProfessional = data.yearsOfExperience !== undefined && data.preferredWorkType && data.preferredWorkType.length > 0;
+        console.log('professionalInfo validation:', { yearsOfExperience: data.yearsOfExperience, preferredWorkType: data.preferredWorkType, canProceed: canProceedProfessional });
+        return canProceedProfessional;
+      }
       case 'recruiterInfo':
         return data.department;
       case 'companyInfo':
         return data.companyName && data.companyIndustry && data.companySize;
+      case 'complete':
+        return true;
       default:
         return true;
     }
@@ -164,7 +186,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
               </div>
               <div className="bg-white/10 rounded-2xl px-4 py-3 max-w-xs">
                 <p className="text-white text-sm">
-                  Hi! I'm here to help you get started. Are you looking to join as a NxtBeing or hire talent?
+                  Hi! I&apos;m here to help you get started. Are you looking to join as a NxtBeing or hire talent?
                 </p>
               </div>
             </div>
@@ -283,7 +305,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   Years of experience
                 </label>
                 <select
-                  value={data.yearsOfExperience || ''}
+                  value={data.yearsOfExperience !== undefined ? data.yearsOfExperience.toString() : ''}
                   onChange={(e) => setData({ ...data, yearsOfExperience: Number(e.target.value) })}
                   className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white"
                 >
@@ -301,23 +323,23 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                   Preferred work type
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {['Full-time', 'Part-time', 'Contract', 'Freelance'].map((type) => (
+                  {['full-time', 'part-time', 'contract', 'freelance'].map((type) => (
                     <button
                       key={type}
                       onClick={() => {
                         const current = data.preferredWorkType || [];
-                        const updated = current.includes(type.toLowerCase())
-                          ? current.filter(t => t !== type.toLowerCase())
-                          : [...current, type.toLowerCase()];
+                        const updated = current.includes(type)
+                          ? current.filter(t => t !== type)
+                          : [...current, type];
                         setData({ ...data, preferredWorkType: updated });
                       }}
                       className={`p-3 rounded-lg border transition-all ${
-                        data.preferredWorkType?.includes(type.toLowerCase())
+                        data.preferredWorkType?.includes(type)
                           ? 'border-primary-500 bg-primary-500/20 text-primary-400'
                           : 'border-white/20 bg-white/5 text-white/60 hover:bg-white/10'
                       }`}
                     >
-                      {type}
+                      {type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
                     </button>
                   ))}
                 </div>
@@ -410,7 +432,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
               </div>
               <div className="bg-white/10 rounded-2xl px-4 py-3 max-w-xs">
                 <p className="text-white text-sm">
-                  Perfect! You're all set to get started.
+                  Perfect! You&apos;re all set to get started.
                 </p>
               </div>
             </div>
@@ -511,7 +533,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <span>{currentStep === 'complete' ? 'Get Started' : 'Next'}</span>
+                      <span>{currentStepIndex === totalSteps - 2 ? 'Create Account' : 'Next'}</span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}

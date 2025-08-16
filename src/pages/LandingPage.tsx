@@ -98,7 +98,7 @@ const recruiterTestimonials = [
     company: "FutureTech",
     avatar: "LW",
     rating: 4.9,
-    text: "We've hired 5 professionals from NxtBeings and they've all been exceptional. The screening process is incredible."
+    text: "We&apos;ve hired 5 professionals from NxtBeings and they&apos;ve all been exceptional. The screening process is incredible."
   }
 ];
 
@@ -120,7 +120,8 @@ export default function LandingPage() {
   const [userType, setUserType] = useState<'applicant' | 'recruiter'>('applicant');
   const [showRegistration, setShowRegistration] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
-  const { setUser, setToken, setAccountType } = useAccount();
+  const [registrationUserType, setRegistrationUserType] = useState<'applicant' | 'recruiter'>('applicant');
+  const { login } = useAccount();
   const navigate = useNavigate();
 
   return (
@@ -162,7 +163,10 @@ export default function LandingPage() {
                 <LogIn className="h-4 w-4 mr-2" />
                 Sign In
               </PrimaryButton>
-              <PrimaryButton size="sm" onClick={() => setShowRegistration(true)}>
+              <PrimaryButton size="sm" onClick={() => {
+                setRegistrationUserType(userType);
+                setShowRegistration(true);
+              }}>
                 {userType === 'applicant' ? 'Become NxtBeing' : 'Hire NxtBeing'}
               </PrimaryButton>
             </div>
@@ -283,7 +287,10 @@ export default function LandingPage() {
             <div className="flex items-center justify-center space-x-4 mb-12 relative z-10">
               {userType === 'applicant' ? (
                 <>
-                  <PrimaryButton size="lg" className="drop-shadow-xl" onClick={() => setShowRegistration(true)}>
+                  <PrimaryButton size="lg" className="drop-shadow-xl" onClick={() => {
+                    setRegistrationUserType('applicant');
+                    setShowRegistration(true);
+                  }}>
                     Become NxtBeing
                     <ArrowRight className="h-5 w-5 ml-2" />
                   </PrimaryButton>
@@ -294,7 +301,10 @@ export default function LandingPage() {
                 </>
               ) : (
                 <>
-                  <PrimaryButton size="lg" className="drop-shadow-xl" onClick={() => setShowRegistration(true)}>
+                  <PrimaryButton size="lg" className="drop-shadow-xl" onClick={() => {
+                    setRegistrationUserType('recruiter');
+                    setShowRegistration(true);
+                  }}>
                     Hire NxtBeing
                     <ArrowRight className="h-5 w-5 ml-2" />
                   </PrimaryButton>
@@ -608,7 +618,7 @@ export default function LandingPage() {
               Why Choose NxtBeings?
             </h2>
             <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              We're building the workforce of the future, one AI-empowered professional at a time.
+              We&apos;re building the workforce of the future, one AI-empowered professional at a time.
             </p>
           </motion.div>
 
@@ -754,11 +764,14 @@ export default function LandingPage() {
       <RegistrationModal
         isOpen={showRegistration}
         onClose={() => setShowRegistration(false)}
+        defaultUserType={registrationUserType}
         onSuccess={(response) => {
-          setUser(response.user);
-          setToken(response.token);
-          setAccountType(response.user.userType);
-          navigate('/dashboard');
+          // Redirect to appropriate dashboard based on user type
+          if (response.user.userType === 'recruiter') {
+            navigate('/recruiter/dashboard');
+          } else {
+            navigate('/nxtbeing/dashboard');
+          }
         }}
       />
 
@@ -766,11 +779,14 @@ export default function LandingPage() {
       <LoginModal
         isOpen={showLogin}
         onClose={() => setShowLogin(false)}
+        defaultUserType={userType}
         onSuccess={(response) => {
-          setUser(response.user);
-          setToken(response.token);
-          setAccountType(response.user.userType);
-          navigate('/dashboard');
+          // Redirect to appropriate dashboard based on user type
+          if (response.user.userType === 'recruiter') {
+            navigate('/recruiter/dashboard');
+          } else {
+            navigate('/nxtbeing/dashboard');
+          }
         }}
       />
     </div>

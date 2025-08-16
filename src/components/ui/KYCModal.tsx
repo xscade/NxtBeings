@@ -139,8 +139,8 @@ export const KYCModal: React.FC<KYCModalProps> = ({
                 icon={<Phone className="h-4 w-4" />}
                 className="w-full"
               />
-              <p className="text-white/60 text-xs">
-                We'll send a verification code to this number for KYC verification
+              <p className="text-white/60 text-sm">
+                We&apos;ll send a verification code to your phone number
               </p>
             </div>
           </div>

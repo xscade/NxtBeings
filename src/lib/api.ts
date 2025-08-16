@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta as any).env.VITE_API_URL || (import.meta as any).env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001/api';
 
 class ApiService {
   private baseURL: string;
@@ -9,8 +9,13 @@ class ApiService {
     this.token = localStorage.getItem('token');
   }
 
-  private getHeaders(): HeadersInit {
-    const headers: HeadersInit = {
+  // Method to update token
+  setToken(token: string | null) {
+    this.token = token;
+  }
+
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
 
@@ -23,10 +28,10 @@ class ApiService {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: any = {}
   ): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
-    const config: RequestInit = {
+    const config: any = {
       ...options,
       headers: {
         ...this.getHeaders(),
@@ -201,15 +206,6 @@ class ApiService {
   }
 
   // Utility methods
-  setToken(token: string | null) {
-    this.token = token;
-    if (token) {
-      localStorage.setItem('token', token);
-    } else {
-      localStorage.removeItem('token');
-    }
-  }
-
   getToken(): string | null {
     return this.token;
   }
