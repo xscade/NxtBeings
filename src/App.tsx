@@ -7,10 +7,14 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import { AccountProvider } from "@/contexts/AccountContext";
 
 function App() {
-  return (
-    <AccountProvider>
-      <Router>
-        <Routes>
+  console.log("App component rendering...");
+  
+  // Simple fallback in case of errors
+  try {
+    return (
+      <AccountProvider>
+        <Router>
+          <Routes>
           {/* Landing page as home */}
           <Route path="/" element={<LandingPage />} />
           
@@ -75,10 +79,30 @@ function App() {
               <AdminDashboard />
             </div>
           } />
-        </Routes>
-      </Router>
-    </AccountProvider>
-  );
+                  </Routes>
+        </Router>
+      </AccountProvider>
+    );
+  } catch (error) {
+    console.error("App error:", error);
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        backgroundColor: '#0a0a0a',
+        color: 'white',
+        fontFamily: 'Arial, sans-serif'
+      }}>
+        <div>
+          <h1>NxtBeings</h1>
+          <p>Something went wrong. Please refresh the page.</p>
+          <p>Error: {error instanceof Error ? error.message : 'Unknown error'}</p>
+        </div>
+      </div>
+    );
+  }
 }
 
 export default App;
