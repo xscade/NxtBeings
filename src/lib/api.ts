@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL || (import.meta as any).env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
 
 class ApiService {
   private baseURL: string;
