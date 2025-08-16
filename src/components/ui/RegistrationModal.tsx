@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeft, ArrowRight, Phone, Mail, User, Building, CheckCircle, Clock } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Mail, User, Building, CheckCircle } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { PrimaryButton } from './PrimaryButton';
 import { Input } from './Input';
-import { Badge } from './Badge';
 import { apiService } from '@/lib/api';
 
 interface RegistrationModalProps {
@@ -50,7 +49,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const steps = {
+  const steps: Record<UserType, Step[]> = {
     applicant: ['userType', 'basicInfo', 'professionalInfo', 'complete'],
     recruiter: ['userType', 'basicInfo', 'recruiterInfo', 'companyInfo', 'complete']
   };
@@ -82,10 +81,10 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
     if (currentStep === 'complete') {
       await handleRegistration();
     } else {
-      const nextStepIndex = currentStepIndex + 1;
-      if (nextStepIndex < totalSteps) {
-        setCurrentStep(steps[data.userType][nextStepIndex]);
-      }
+          const nextStepIndex = currentStepIndex + 1;
+    if (nextStepIndex < totalSteps) {
+      setCurrentStep(steps[data.userType][nextStepIndex] as Step);
+    }
     }
   };
 
@@ -107,7 +106,7 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
         email: data.email,
         password: data.password,
         currentRole: data.currentRole,
-        ...(data.userType === 'professional' && {
+        ...(data.userType === 'applicant' && {
           yearsOfExperience: data.yearsOfExperience,
           preferredWorkType: data.preferredWorkType
         }),
@@ -123,9 +122,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
 
       let response;
       if (data.userType === 'applicant') {
-        response = await apiService.registerApplicant(registrationData);
+        response = await apiService.registerApplicant(registrationData as any);
       } else {
-        response = await apiService.registerRecruiter(registrationData);
+        response = await apiService.registerRecruiter(registrationData as any);
       }
 
       onSuccess(response);
@@ -172,9 +171,9 @@ export const RegistrationModal: React.FC<RegistrationModalProps> = ({
             
             <div className="flex flex-col space-y-3">
               <button
-                onClick={() => setData({ ...data, userType: 'professional' })}
+                onClick={() => setData({ ...data, userType: 'applicant' })}
                 className={`p-4 rounded-xl border-2 transition-all ${
-                  data.userType === 'professional'
+                  data.userType === 'applicant'
                     ? 'border-primary-500 bg-primary-500/10'
                     : 'border-white/20 bg-white/5 hover:bg-white/10'
                 }`}

@@ -94,7 +94,7 @@ export const ConversationalRegistration: React.FC<ConversationalRegistrationProp
     if (!currentStepData) return;
 
     let isValid = true;
-    let value = currentInput;
+    let value: string | string[] = currentInput;
 
     if (currentStepData.type === 'multi-select') {
       value = selectedOptions;

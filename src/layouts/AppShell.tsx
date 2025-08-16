@@ -140,11 +140,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                   animate={{ opacity: 1 }}
                   className="flex-1 min-w-0"
                 >
-                  <p className="text-sm font-medium text-white">{user?.name}</p>
+                  <p className="text-sm font-medium text-white">{user?.firstName} {user?.lastName}</p>
                   <div className="flex items-center space-x-2 mt-1">
                     <Badge variant="primary" size="sm">
                       <Zap className="h-2 w-2 mr-1" />
-                      {accountType === 'nxtbeing' ? 'AI-First' : 'Recruiter'}
+                      {accountType === 'applicant' ? 'AI-First' : 'Recruiter'}
                     </Badge>
                   </div>
                 </motion.div>
@@ -178,7 +178,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/60" />
                 <input
                   type="text"
-                  placeholder={accountType === 'nxtbeing' 
+                  placeholder={accountType === 'applicant' 
                     ? "Search jobs, skills, opportunities..." 
                     : "Search talent, jobs, candidates..."
                   }
@@ -195,7 +195,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
               </button>
               <PrimaryButton size="sm">
                 <BookOpen className="h-4 w-4 mr-2" />
-                {accountType === 'nxtbeing' ? 'Update Skills' : 'Post Job'}
+                {accountType === 'applicant' ? 'Update Skills' : 'Post Job'}
               </PrimaryButton>
             </div>
           </div>

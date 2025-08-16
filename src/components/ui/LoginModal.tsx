@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeft, ArrowRight, Phone, User, Building, CheckCircle, Clock } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Phone, User, Building, CheckCircle, Clock, Mail } from 'lucide-react';
 import { GlassCard } from './GlassCard';
 import { PrimaryButton } from './PrimaryButton';
 import { Input } from './Input';

@@ -11,6 +11,8 @@ interface PrimaryButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 export const PrimaryButton = React.forwardRef<HTMLButtonElement, PrimaryButtonProps>(
   ({ children, variant = "primary", size = "md", className, ...props }, ref) => {
+    // Filter out props that conflict with Framer Motion
+    const { onAnimationStart, onDragStart, onDrag, onDragEnd, onDragEnter, onDragLeave, onDragOver, onDrop, ...safeProps } = props;
     const baseClasses = "font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/60 focus:ring-offset-0 relative overflow-hidden";
     
     const variants = {
@@ -36,7 +38,7 @@ export const PrimaryButton = React.forwardRef<HTMLButtonElement, PrimaryButtonPr
         )}
         whileHover={{ scale: variant === "primary" ? 1.05 : 1.02 }}
         whileTap={{ scale: 0.98 }}
-        {...props}
+        {...safeProps}
       >
         <span className="relative z-10 flex items-center justify-center">
           {children}

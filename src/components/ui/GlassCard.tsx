@@ -10,6 +10,9 @@ interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
   ({ children, hover = true, className, ...props }, ref) => {
+    // Filter out props that conflict with Framer Motion
+    const { onAnimationStart, onDragStart, onDrag, onDragEnd, onDragEnter, onDragLeave, onDragOver, onDrop, ...safeProps } = props;
+    
     return (
       <motion.div
         ref={ref}
@@ -26,7 +29,7 @@ export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
           y: -4,
           transition: { duration: 0.2 }
         } : undefined}
-        {...props}
+        {...safeProps}
       >
         <div className="relative z-10">
           {children}

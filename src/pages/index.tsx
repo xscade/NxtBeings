@@ -2,21 +2,15 @@ import React, { useEffect } from "react";
 import { motion } from "framer-motion";
 import { 
   Briefcase, 
-  TrendingUp, 
-  Award,
-  Plus,
   MapPin,
   DollarSign,
   Clock,
-  Star,
-  User,
   Zap,
   Target,
   BookOpen,
   Eye,
   FileText,
-  Users,
-  Building
+  Users
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/GlassCard";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
